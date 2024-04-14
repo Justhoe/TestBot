@@ -1,22 +1,36 @@
 from aiogram import F, Router
-from aiogram.types import Message
-from aiogram.filters import CommandStart, Command
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import CommandStart
+
 
 import app.keyboards as kb
+import app.database.requests as rq
 
 router = Router()
 
+
 @router.message(CommandStart())
 async def cmd_start(message: Message):
-    await message.answer('Привет!', reply_markup=kb.main)
-    await message.reply('Как дела?')
-
-
-@router.message(Command('help'))
-async def cmd_help(message: Message):
-    await message.answer('Вы нажали на кнопку помощи')
-
+    await rq.set_user(message.from_user.id)
+    await message.answer('Добро пожаловать в магазин кроссовок!', reply_markup=kb.main)
 
 @router.message(F.text == 'Каталог')
 async def catalog(message: Message):
-    await message.answer('Выберете категорию товара', reply_markup=kb.catalog)
+    await message.answer('Выберите категорию товаров', reply_markup=await kb.categories())
+
+
+
+@router.callback_query(F.data.startswith('catrgory_'))
+async def category(callback: CallbackQuery):
+    await callback.answer('Вы выбрали категорию')
+    await callback.answer('Выберите товар по категории',
+                          reply_markup=await kb.items(callback.data.split('_')[1]))
+
+
+@router.callback_query(F.data.startswith('item_'))
+async def category(callback: CallbackQuery):
+    item_data = await rq.get_item(callback.data.split('_')[1])
+    await callback.answer('Вы выбрали товар')
+    await callback.answer(f'Название: {item_data.name}\nОписание: {item_data.description}\nЦена: {item_data.price}',
+                          reply_markup=await kb.items(callback.data.split('_')[1]))
+
